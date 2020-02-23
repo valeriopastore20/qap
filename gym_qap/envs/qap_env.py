@@ -58,9 +58,16 @@ class QapEnv(gym.Env):
         high = np.full(self.num_prod*self.num_prod,1)
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         self.mff_sum = self.compute_mff_sum(matrix_dp)
+        self.done = False
 
     def reset(self):
-        self.__init__()
+        matrix_dp = np.dot(np.dot(self.matrix_pl,self.matrix_dist),np.transpose(self.matrix_pl))
+        self.matrix_wd = matrix_dp*self.matrix_fq
+        self.current_sum = np.sum(self.matrix_wd)
+        self.initial_sum = self.current_sum
+        self.mff_sum = self.compute_mff_sum(matrix_dp)
+        self.count = 0
+        self.done = False
         return np.array(self.matrix_wd).flatten()
 
 
@@ -76,7 +83,6 @@ class QapEnv(gym.Env):
         print("R E N D E R")
 
     def step(self,actionKey):
-        done = False
         #converte il valore dell'action nella corrispondente azione
         action = self.dict[actionKey]
         # effettua lo swap sulla matrice di prodotto e ricalcola la matrice finale
@@ -86,12 +92,12 @@ class QapEnv(gym.Env):
         sum = np.sum(self.matrix_wd)
         #calcola il reward come differenza tra la somma iniziale e la somma ottenuta ora. Quindi se questo valore e' positivo vuol dire che la somma totale
         # e' stata ridotta, altrimenti e' stata aumentata
-        reward = self.current_sum - sum
+        reward = self.mff_sum - sum
         self.current_sum = sum
         self.count+=1
         if(self.count > self.num_prod+10):
-            done = True
-        return np.array(self.matrix_wd).flatten(), reward, done, {}
+            self.done = True
+        return np.array(self.matrix_wd).flatten(), reward, self.one, {}
 
 
 # UTILITY METHODS
