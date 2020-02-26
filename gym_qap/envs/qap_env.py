@@ -17,7 +17,7 @@ class QapEnv(gym.Env):
 
     def __init__(self):
         #genera e legge i frequent item sets
-        path = os.getenv("HOME")+"/fisFolder/fisFile10.txt"
+        path = os.getenv("HOME")+"/fisFolder/fisFile.txt"
         self.matrix_fq = fisg.readFisFile(path)
         self.matrix_fq = self.matrix_fq/np.max(self.matrix_fq)
         self.num_prod = len(self.matrix_fq)
