@@ -1,7 +1,6 @@
 import gym
 import numpy as np
 import fis_generator as fisg
-import random
 import os
 
 from gym import spaces
@@ -18,7 +17,7 @@ class QapEnv(gym.Env):
 
     def __init__(self):
         #genera e legge i frequent item sets
-        path = os.getenv("HOME")+"/fisFolder/fisFile.txt"
+        path = os.getenv("HOME")+"/fisFolder/fisFile10.txt"
         self.matrix_fq = fisg.readFisFile(path)
         self.matrix_fq = self.matrix_fq/np.max(self.matrix_fq)
         self.num_prod = len(self.matrix_fq)
@@ -30,13 +29,11 @@ class QapEnv(gym.Env):
             for b in range(a,self.num_prod):
                 self.dict.update({k : [a,b]})
                 k+=1
-
-        # contatore delle mosse effettuate
-        self.count = 0
-        # Inizializza la matrice dei prodotti
         self.matrix_pl = np.zeros((self.num_prod, self.num_loc), int)
         np.fill_diagonal(self.matrix_pl,1)
         np.random.shuffle(np.transpose(self.matrix_pl))
+        # contatore delle mosse effettuate
+        # Inizializza la matrice dei prodotti
         #inizializza matrice delle distanze tra locazioni (e' quadrata simmetrica e sulla diagonale c'e' la distanza con l'uscita)
         self.matrix_dist = np.zeros((self.num_loc, self.num_loc), int)
         for i in range(0,self.num_loc):
@@ -45,29 +42,26 @@ class QapEnv(gym.Env):
         for i in range(self.num_loc):
             self.matrix_dist[i,i] = i
         self.matrix_dist = self.matrix_dist/np.max(self.matrix_dist)
-        #Crea la matrice finale (l'osservazione su cui opera l'agente)
-        matrix_dp = np.dot(np.dot(self.matrix_pl,self.matrix_dist),np.transpose(self.matrix_pl))
-        self.matrix_wd = matrix_dp*self.matrix_fq
-
-        self.current_sum = np.sum(self.matrix_wd)
-        self.initial_sum = self.current_sum
 
         self.action_space = spaces.Discrete(len(self.dict))
-
         low = np.zeros(self.num_prod*self.num_prod)
         high = np.full(self.num_prod*self.num_prod,1)
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
+
+
+        matrix_dp = np.dot(np.dot(self.matrix_pl,self.matrix_dist),np.transpose(self.matrix_pl))
+        self.matrix_wd = matrix_dp*self.matrix_fq
+        self.current_sum = np.sum(self.matrix_wd)
+        self.initial_sum = np.sum(self.matrix_wd)
         self.mff_sum = self.compute_mff_sum(matrix_dp)
         self.done = False
 
     def reset(self):
+        np.random.shuffle(np.transpose(self.matrix_pl))
         matrix_dp = np.dot(np.dot(self.matrix_pl,self.matrix_dist),np.transpose(self.matrix_pl))
         self.matrix_wd = matrix_dp*self.matrix_fq
         self.current_sum = np.sum(self.matrix_wd)
-        self.initial_sum = self.current_sum
-        self.mff_sum = self.compute_mff_sum(matrix_dp)
         self.count = 0
-        self.done = False
         return np.array(self.matrix_wd).flatten()
 
 
@@ -83,6 +77,7 @@ class QapEnv(gym.Env):
         print("R E N D E R")
 
     def step(self,actionKey):
+        self.done = False
         #converte il valore dell'action nella corrispondente azione
         action = self.dict[actionKey]
         # effettua lo swap sulla matrice di prodotto e ricalcola la matrice finale
@@ -92,12 +87,13 @@ class QapEnv(gym.Env):
         sum = np.sum(self.matrix_wd)
         #calcola il reward come differenza tra la somma iniziale e la somma ottenuta ora. Quindi se questo valore e' positivo vuol dire che la somma totale
         # e' stata ridotta, altrimenti e' stata aumentata
-        reward = self.mff_sum - sum
+        reward = (self.mff_sum - sum)
         self.current_sum = sum
         self.count+=1
-        if(self.count > self.num_prod+10):
+        if(self.count == self.num_prod+10):
             self.done = True
-        return np.array(self.matrix_wd).flatten(), reward, self.one, {}
+            self.final_sum = sum
+        return np.array(self.matrix_wd).flatten(), reward, self.done, {}
 
 
 # UTILITY METHODS
