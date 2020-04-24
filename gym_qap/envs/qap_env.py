@@ -64,6 +64,7 @@ class QapEnv(gym.Env):
         self.initial_sum = np.sum(self.matrix_wd)
         self.current_sum = np.sum(self.matrix_wd)
         self.count = 0
+        self.done = False
         return np.array(self.matrix_wd).flatten()
 
     # metodo per effettuare il rendere dell'environment
@@ -78,8 +79,6 @@ class QapEnv(gym.Env):
 
     # metodo che effettua l'azione scelta
     def step(self,actionKey):
-        self.done = False #e' qui perche' la callback viene chiamata dopo il reset, quindi nn saremmo in grado di
-                        # vedere i risultati dopo l'ultima azione
         #converte il valore dell'action nella corrispondente azione
         self.action = self.dict[actionKey]
         # effettua lo swap sulla matrice di prodotto e ricalcola la matrice finale
